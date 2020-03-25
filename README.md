@@ -109,3 +109,64 @@ npm install -D @sveltejs/svelte-virtual-list
 ## Bugs and feedback
 
 Sapper is in early development, and may have the odd rough edge here and there. Please be vocal over on the [Sapper issue tracker](https://github.com/sveltejs/sapper/issues).
+
+## Authentication
+
+### Provide environment variables
+
+#### `HASURA_GRAPHQL_ADMIN_SECRET`
+
+#### `HASURA_GRAPHQL_JWT_SECRET`
+```json
+{
+    "type":"RS256",
+    "jwk_url": "https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com",
+    "audience": "<firebase-project-id>",
+    "issuer": "https://securetoken.google.com/<firebase-project-id>"
+}
+```
+
+### Firebase cloud function
+
+```javascript
+const functions = require("firebase-functions");
+const admin = require("firebase-admin");
+
+admin.initializeApp(functions.config().firebase);
+
+exports.processSignUp = functions.auth.user().onCreate(user => {
+    const customClaims = {
+        "https://hasura.io/jwt/claims": {
+            "x-hasura-default-role": "user",
+            "x-hasura-allowed-roles": ["user"],
+            "x-hasura-user-id": user.uid
+        }
+    };
+    return admin
+        .auth()
+        .setCustomUserClaims(user.uid, customClaims)
+        .then(() => {
+            // Update real-time database to notify client to force refresh.
+            const metadataRef = admin.database().ref("metadata/" + user.uid);
+            // Set the refresh time to the current UTC timestamp.
+            // This will be captured on the client to force a token refresh.
+            return metadataRef.set({ refreshTime: new Date().getTime() });
+        })
+        .catch(error => {
+            console.log(error);
+        });
+});
+```
+### Realtime Database Rules
+
+```json
+{
+  "rules": {
+    "metadata": {
+      "$uid": {
+        ".read": "auth != null && auth.uid == $uid"
+      }
+    }
+  }
+}
+```
