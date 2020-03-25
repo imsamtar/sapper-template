@@ -18,7 +18,7 @@
 	img {
 		width: 100%;
 		max-width: 400px;
-		margin: 0 0 1em 0;
+		margin: 0 auto 1em auto;
 	}
 
 	p {
@@ -44,3 +44,4 @@
 </figure>
 
 <p><strong>Try editing this file (src/routes/index.svelte) to test live reloading.</strong></p>
+<h1 class="text-red-400">Hello, World!</h1>
